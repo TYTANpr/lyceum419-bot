@@ -78,46 +78,25 @@ def get_all_subscribers():
     return rows
 
 # --- ПАРСЕР CSV БАЗОВОГО РАСПИСАНИЯ ВСЕХ КЛАССОВ ---
-BASE_SCHEDULE = {} # { class: { weekday: { lesson_num: (subj, room) } } }
+import json
 
-def load_schedule_from_csv():
+BASE_SCHEDULE = {}
+
+def load_schedule():
     global BASE_SCHEDULE
-    if not os.path.exists("schedule.csv"):
-        return
-    try:
-        with open("schedule.csv", "r", encoding="utf-8", errors="ignore") as f:
-            reader = list(csv.reader(f))
-        
-        # Поиск заголовков классов
-        class_col_map = {} # col_idx -> class_name
-        current_day = None
+    if os.path.exists("schedule.json"):
+        with open("schedule.json", "r", encoding="utf-8") as f:
+            BASE_SCHEDULE = json.load(f)
+        print(f"✅ Базовое расписание загружено для {len(BASE_SCHEDULE)} классов")import json
 
-        for row in reader:
-            row_str = " ".join(row).lower()
-            for day_idx, d_name in enumerate(["понедельник", "вторник", "среда", "четверг", "пятница", "суббота"]):
-                if d_name in row_str and len(row[0].strip()) > 3:
-                    current_day = day_idx
-                    break
+BASE_SCHEDULE = {}
 
-            # Строка классов (5а, 5б...)
-            if "5а" in row_str and "10а" in row_str:
-                for idx, cell in enumerate(row):
-                    c_clean = cell.strip().lower()
-                    if c_clean in ALL_CLASSES:
-                        class_col_map[idx] = c_clean
-                continue
-
-            if current_day is not None and len(row) > 0 and row[0].strip().isdigit():
-                lesson_num = int(row[0].strip())
-                for col_idx, c_name in class_col_map.items():
-                    if col_idx < len(row):
-                        subj = row[col_idx].strip()
-                        room = row[col_idx+1].strip() if col_idx+1 < len(row) else ""
-                        if subj:
-                            BASE_SCHEDULE.setdefault(c_name, {}).setdefault(current_day, {})[lesson_num] = (clean_subj(subj), room)
-    except Exception as e:
-        print("Ошибка загрузки CSV:", e)
-
+def load_schedule():
+    global BASE_SCHEDULE
+    if os.path.exists("schedule.json"):
+        with open("schedule.json", "r", encoding="utf-8") as f:
+            BASE_SCHEDULE = json.load(f)
+        print(f"✅ Базовое расписание загружено для {len(BASE_SCHEDULE)} классов")
 # --- ПАРСИНГ ЗАМЕН С САЙТА ЛИЦЕЯ ДЛЯ ВСЕХ КЛАССОВ ---
 def fetch_all_changes():
     """Возвращает: { class_name: { lesson_num: (subj, room, cancelled) } }, target_title, target_wday"""
