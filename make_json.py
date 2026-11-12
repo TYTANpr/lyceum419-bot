@@ -1,4 +1,3 @@
-import csv
 import json
 
 def parse_schedule_csv(filename="schedule.csv"):
@@ -15,16 +14,19 @@ def parse_schedule_csv(filename="schedule.csv"):
     }
 
     try:
-        # Изменили кодировку на cp1251 для чтения Windows-файлов
-        with open(filename, mode='r', encoding='cp1251') as f:
-            reader = list(csv.reader(f))
+        # Используем utf-8 с игнорированием ошибок кодировки
+        with open(filename, mode='r', encoding='utf-8', errors='ignore') as f:
+            lines = f.readlines()
     except Exception as e:
         print(f"Ошибка открытия файла {filename}: {e}")
         return
 
+    # Раскладываем строки по запятым
+    reader = [line.strip().split(',') for line in lines]
+
     classes_row = None
-    for i, row in enumerate(reader[:5]):
-        if any(c in row for c in ["5а", "6а", "7а", "10а"]):
+    for row in reader[:5]:
+        if any("5а" in c or "10а" in c for c in row):
             classes_row = row
             break
     
@@ -34,7 +36,7 @@ def parse_schedule_csv(filename="schedule.csv"):
 
     col_to_class = {}
     for col_idx, val in enumerate(classes_row):
-        val_clean = val.strip().lower()
+        val_clean = val.strip().lower().replace('"', '')
         if val_clean and (val_clean[:-1].isdigit() and val_clean[-1] in 'абвг'):
             col_to_class[col_idx] = val_clean
 
@@ -46,7 +48,7 @@ def parse_schedule_csv(filename="schedule.csv"):
         if not row or not row[0].strip():
             continue
         
-        first_col = row[0].strip().lower()
+        first_col = row[0].strip().lower().replace('"', '')
 
         for day_name, day_idx in days_map.items():
             if day_name in first_col:
@@ -54,18 +56,19 @@ def parse_schedule_csv(filename="schedule.csv"):
                 current_lesson = None
                 break
 
-        if row[0].strip().isdigit():
-            current_lesson = int(row[0].strip())
+        clean_first = row[0].strip().replace('"', '')
+        if clean_first.isdigit():
+            current_lesson = int(clean_first)
 
         if current_day is not None and current_lesson is not None:
             for col_idx, c_name in col_to_class.items():
                 if col_idx < len(row):
-                    subject = row[col_idx].strip()
+                    subject = row[col_idx].strip().replace('"', '')
                     room = ""
                     if col_idx + 1 < len(row):
-                        room = row[col_idx + 1].strip()
+                        room = row[col_idx + 1].strip().replace('"', '')
 
-                    if subject:
+                    if subject and subject.lower() != 'спортзал':
                         if c_name not in schedule_data:
                             schedule_data[c_name] = {}
                         if current_day not in schedule_data[c_name]:
