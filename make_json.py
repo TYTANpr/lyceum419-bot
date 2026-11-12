@@ -1,8 +1,7 @@
 import csv
 import json
-re_sub_room = True
 
-def parse_schedule_csv(filename="shedule.csv"):
+def parse_schedule_csv(filename="schedule.csv"):
     schedule_data = {}
     
     current_day = None
@@ -22,7 +21,6 @@ def parse_schedule_csv(filename="shedule.csv"):
         print(f"Ошибка открытия файла {filename}: {e}")
         return
 
-    # Ищем заголовки классов в таблице (обычно это самая первая строка с классами)
     classes_row = None
     for i, row in enumerate(reader[:5]):
         if any(c in row for c in ["5а", "6а", "7а", "10а"]):
@@ -33,16 +31,13 @@ def parse_schedule_csv(filename="shedule.csv"):
         print("❌ Не удалось найти строку с классами в CSV!")
         return
 
-    # Определяем, в каких колонках какой класс находится
-    # Структура: колонка индекса -> имя класса
     col_to_class = {}
     for col_idx, val in enumerate(classes_row):
         val_clean = val.strip().lower()
-        # Проверяем, похоже ли на класс (например, 5а, 10б, 11в)
         if val_clean and (val_clean[:-1].isdigit() and val_clean[-1] in 'абвг'):
             col_to_class[col_idx] = val_clean
 
-    print( найдены классы в колонках: {col_to_class})
+    print(f"Найдены классы в колонках: {col_to_class}")
 
     current_lesson = None
 
@@ -52,24 +47,19 @@ def parse_schedule_csv(filename="shedule.csv"):
         
         first_col = row[0].strip().lower()
 
-        # Проверяем день недели
         for day_name, day_idx in days_map.items():
             if day_name in first_col:
                 current_day = day_idx
                 current_lesson = None
                 break
 
-        # Проверяем номер урока (первая колонка — число от 1 до 10)
         if row[0].strip().isdigit():
             current_lesson = int(row[0].strip())
 
-        # Если у нас есть текущий день и текущий урок — парсим предметы для классов
         if current_day is not None and current_lesson is not None:
             for col_idx, c_name in col_to_class.items():
-                # Проверяем, хватает ли колонок в строке
                 if col_idx < len(row):
                     subject = row[col_idx].strip()
-                    # Кабинет обычно лежит в следующей колонке после предмета
                     room = ""
                     if col_idx + 1 < len(row):
                         room = row[col_idx + 1].strip()
@@ -80,10 +70,8 @@ def parse_schedule_csv(filename="shedule.csv"):
                         if current_day not in schedule_data[c_name]:
                             schedule_data[c_name][current_day] = {}
                         
-                        # Сохраняем урок: номер -> [предмет, кабинет]
                         schedule_data[c_name][current_day][str(current_lesson)] = [subject, room]
 
-    # Сохраняем в schedule.json
     with open("schedule.json", "w", encoding="utf-8") as f:
         json.dump(schedule_data, f, ensure_ascii=False, indent=2)
     
