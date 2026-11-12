@@ -1,4 +1,3 @@
-import requests
 import os
 import re
 import time
@@ -9,6 +8,8 @@ from datetime import datetime, timedelta
 from flask import Flask
 import telebot
 from telebot import types
+import requests             # <--- мы его добавили
+from bs4 import BeautifulSoup # <--- вот этого не хватает!
 
 # --- НАСТРОЙКИ ---
 BOT_TOKEN = os.getenv("BOT_TOKEN")
