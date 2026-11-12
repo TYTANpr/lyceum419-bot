@@ -1,11 +1,9 @@
 import os
 import re
-import csv
 import time
 import sqlite3
 import threading
-import requests
-from bs4 import BeautifulSoup
+import json
 from datetime import datetime, timedelta
 from flask import Flask
 import telebot
@@ -77,18 +75,7 @@ def get_all_subscribers():
     conn.close()
     return rows
 
-# --- ПАРСЕР CSV БАЗОВОГО РАСПИСАНИЯ ВСЕХ КЛАССОВ ---
-import json
-
-BASE_SCHEDULE = {}
-
-def load_schedule():
-    global BASE_SCHEDULE
-    if os.path.exists("schedule.json"):
-        with open("schedule.json", "r", encoding="utf-8") as f:
-            BASE_SCHEDULE = json.load(f)
-        print(f"✅ Базовое расписание загружено для {len(BASE_SCHEDULE)} классов")import json
-
+# --- ЗАГРУЗКА БАЗОВОГО РАСПИСАНИЯ ИЗ JSON ---
 BASE_SCHEDULE = {}
 
 def load_schedule():
@@ -97,6 +84,9 @@ def load_schedule():
         with open("schedule.json", "r", encoding="utf-8") as f:
             BASE_SCHEDULE = json.load(f)
         print(f"✅ Базовое расписание загружено для {len(BASE_SCHEDULE)} классов")
+    else:
+        print("⚠️ Файл schedule.json не найден!")
+
 # --- ПАРСИНГ ЗАМЕН С САЙТА ЛИЦЕЯ ДЛЯ ВСЕХ КЛАССОВ ---
 def fetch_all_changes():
     """Возвращает: { class_name: { lesson_num: (subj, room, cancelled) } }, target_title, target_wday"""
@@ -164,7 +154,12 @@ def fetch_all_changes():
     return changes, target_title, target_wday
 
 def build_class_message(c_name, target_title, target_wday, day_changes):
-    base = BASE_SCHEDULE.get(c_name, {}).get(target_wday, {})
+    # Ключи в JSON после json.load() всегда становятся строками ("0", "1", "2" и т.д.)
+    base = BASE_SCHEDULE.get(c_name, {}).get(str(target_wday), {})
+    
+    # Приводим ключи словаря к int для сортировки, если они были строками из JSON
+    base = {int(k): v for k, v in base.items()}
+    
     all_nums = sorted(set(list(base.keys()) + list(day_changes.keys())))
 
     if not all_nums:
@@ -221,7 +216,7 @@ def cmd_start(message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith("set_"))
 def callback_set_class(call):
     c_name = call.data.split("_")[1]
-    topic_id = call.message.message_thread_id
+    topic_id = getattr(call.message, 'message_thread_id', None)
     set_user_class(call.message.chat.id, c_name, topic_id)
     bot.edit_message_text(f"✅ Вы успешно выбрали класс <b>{c_name.upper()}</b>!\nТеперь бот присылает расписание и замены для вашего класса.",
                           chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode="HTML")
@@ -281,7 +276,7 @@ def auto_alerts_loop():
             for chat_id, c_name, topic_id in subscribers:
                 c_changes = changes.get(c_name, {})
                 current_sig = f"{target_title}_{sorted(c_changes.items())}"
-                
+
                 # Если появились новые замены для этого класса
                 if c_changes and current_sig != last_signatures.get(c_name):
                     msg = build_class_message(c_name, target_title, target_wday, c_changes)
@@ -306,7 +301,7 @@ def index():
 
 if __name__ == '__main__':
     init_db()
-    load_schedule_from_csv()
+    load_schedule()  # Исправлено на правильное название функции
     threading.Thread(target=auto_alerts_loop, daemon=True).start()
     threading.Thread(target=lambda: app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 8080))), daemon=True).start()
     print("Школьный бот лицея 419 запущен...")
