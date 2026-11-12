@@ -12,7 +12,7 @@ import telebot
 from telebot import types
 
 # --- НАСТРОЙКИ ---
-BOT_TOKEN = os.getenv("BOT_TOKEN", "ВАШ_ТОКЕН_ОТ_BOTFATHER")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 bot = telebot.TeleBot(BOT_TOKEN)
 
 URL = "https://419.spb.ru/novosti/news_post/izmeneniya-raspisaniya"
