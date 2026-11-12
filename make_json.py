@@ -15,7 +15,8 @@ def parse_schedule_csv(filename="schedule.csv"):
     }
 
     try:
-        with open(filename, mode='r', encoding='utf-8-sig') as f:
+        # Изменили кодировку на cp1251 для чтения Windows-файлов
+        with open(filename, mode='r', encoding='cp1251') as f:
             reader = list(csv.reader(f))
     except Exception as e:
         print(f"Ошибка открытия файла {filename}: {e}")
